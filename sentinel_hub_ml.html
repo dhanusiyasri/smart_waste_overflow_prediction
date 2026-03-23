@@ -1,0 +1,1167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Sentinel Hub — ML Edition</title>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
+<style>
+:root{
+  --bg:#f3faff;--s0:#fff;--s1:#e6f6ff;--s2:#dbf1fe;--s3:#d5ecf8;--s4:#cfe6f2;
+  --pri:#003178;--pri2:#0d47a1;
+  --sec:#1b6d24;--sec-c:#a0f399;--sec-ct:#217128;
+  --ter:#720009;--ter-c:#9d0011;
+  --txt:#071e27;--txt2:#434652;--out:#737783;--outv:#c3c6d4;
+  --inv:#1e333c;
+  --nav:56px;--sb:300px;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+html,body{height:100%;overflow:hidden;font-family:'Manrope',sans-serif;background:var(--bg);color:var(--txt);}
+button{cursor:pointer;font-family:inherit;border:none;background:none;}
+
+.app{display:grid;grid-template-rows:var(--nav) 1fr;height:100vh;}
+.body{display:grid;grid-template-columns:var(--sb) 1fr;height:calc(100vh - var(--nav));overflow:hidden;}
+
+nav{background:var(--s0);border-bottom:1px solid var(--outv);box-shadow:0 1px 12px rgba(7,30,39,.07);display:flex;align-items:center;justify-content:space-between;padding:0 20px;z-index:200;}
+.nb{display:flex;align-items:center;gap:10px;}
+.ni{width:30px;height:30px;background:var(--pri);border-radius:7px;display:flex;align-items:center;justify-content:center;}
+.ni svg{width:16px;height:16px;}
+.nm{font-size:15px;font-weight:800;color:var(--pri);letter-spacing:.06em;text-transform:uppercase;}
+.tabs{display:flex;gap:2px;}
+.tab{padding:6px 16px;border-radius:7px;font-size:12px;font-weight:600;color:var(--out);transition:.15s;}
+.tab:hover{color:var(--txt);background:var(--s1);}
+.tab.on{color:var(--pri);background:var(--s1);font-weight:700;}
+.nr{display:flex;align-items:center;gap:12px;}
+.lpill{display:flex;align-items:center;gap:6px;background:var(--s1);padding:5px 12px;border-radius:50px;}
+.ldot{width:7px;height:7px;border-radius:50%;background:var(--sec);animation:blink 2s infinite;}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.3;transform:scale(1.4)}}
+.ltxt{font-family:'DM Mono',monospace;font-size:10px;color:var(--sec-ct);font-weight:500;letter-spacing:.06em;}
+.clk{font-family:'DM Mono',monospace;font-size:12px;color:var(--out);}
+.gpsbtn{display:flex;align-items:center;gap:6px;background:var(--pri);color:#fff;padding:7px 14px;border-radius:8px;font-size:11px;font-weight:700;letter-spacing:.04em;transition:.15s;}
+.gpsbtn:hover{background:var(--pri2);}
+.gpsbtn svg{width:14px;height:14px;}
+.ava{width:30px;height:30px;border-radius:50%;background:var(--s3);border:2px solid var(--outv);font-size:10px;font-weight:700;color:var(--pri);display:flex;align-items:center;justify-content:center;}
+
+/* ML badge in nav */
+.mlbadge{display:flex;align-items:center;gap:5px;background:rgba(0,49,120,.09);border:1px solid rgba(0,49,120,.2);border-radius:6px;padding:4px 10px;font-size:10px;font-weight:700;color:var(--pri);letter-spacing:.04em;}
+.mlbadge svg{width:12px;height:12px;}
+
+.sidebar{background:var(--s0);border-right:1px solid var(--outv);display:flex;flex-direction:column;overflow:hidden;}
+.sbscroll{flex:1;overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:18px;}
+.sbscroll::-webkit-scrollbar{width:3px;}
+.sbscroll::-webkit-scrollbar-thumb{background:var(--outv);border-radius:2px;}
+.sblbl{font-family:'DM Mono',monospace;font-size:9px;font-weight:500;color:var(--out);text-transform:uppercase;letter-spacing:.14em;margin-bottom:9px;}
+.metrics{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+.mc{background:var(--bg);border:1px solid var(--outv);border-radius:10px;padding:12px;display:flex;flex-direction:column;gap:6px;}
+.mc .ml{font-size:9px;font-weight:600;color:var(--out);text-transform:uppercase;letter-spacing:.1em;}
+.mc .mv{font-size:22px;font-weight:800;line-height:1;}
+.mc .mv small{font-size:11px;font-weight:500;margin-left:2px;}
+.binlist{display:flex;flex-direction:column;gap:2px;}
+.binrow{display:flex;align-items:center;gap:9px;padding:8px 9px;border-radius:9px;cursor:pointer;transition:.15s;border:1px solid transparent;}
+.binrow:hover{background:var(--s1);}
+.binrow.sel{background:var(--s1);border-color:var(--pri);}
+.bdot{width:10px;height:10px;border-radius:50%;flex-shrink:0;}
+.binfo{flex:1;min-width:0;}
+.bname{font-size:12px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.bmeta{font-family:'DM Mono',monospace;font-size:9px;color:var(--out);margin-top:1px;}
+.bpct{font-family:'DM Mono',monospace;font-size:10px;font-weight:500;padding:2px 6px;border-radius:4px;flex-shrink:0;}
+.sustain{background:var(--pri);color:#fff;border-radius:12px;padding:14px;position:relative;overflow:hidden;}
+.sustain::after{content:'';position:absolute;right:-14px;top:-14px;width:72px;height:72px;background:rgba(255,255,255,.08);border-radius:50%;}
+.slbl{font-size:9px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;opacity:.75;}
+.sval{font-size:30px;font-weight:800;line-height:1;margin-top:3px;}
+.sdesc{font-size:10px;opacity:.85;margin-top:8px;line-height:1.5;}
+.strack{height:3px;background:rgba(255,255,255,.2);border-radius:2px;margin-top:10px;}
+.sfill{height:100%;background:#a3f69c;border-radius:2px;}
+
+/* ML Status card in sidebar */
+.mlcard{background:linear-gradient(135deg,#003178,#0d47a1);color:#fff;border-radius:12px;padding:14px;position:relative;overflow:hidden;}
+.mlcard::before{content:'';position:absolute;right:-20px;bottom:-20px;width:80px;height:80px;background:rgba(255,255,255,.06);border-radius:50%;}
+.mct{font-size:9px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;opacity:.75;margin-bottom:6px;}
+.mcv{font-size:13px;font-weight:700;}
+.mcsub{font-size:10px;opacity:.8;margin-top:3px;}
+.mcacc{font-size:28px;font-weight:800;line-height:1;color:#a3f69c;}
+
+.maparea{position:relative;overflow:hidden;width:100%;height:100%;}
+#map{position:absolute;top:0;left:0;width:100%;height:100%;z-index:0;}
+
+.mctrl{position:absolute;top:12px;left:12px;z-index:400;display:flex;gap:6px;flex-wrap:wrap;}
+.cbtn{display:flex;align-items:center;gap:5px;background:var(--s0);border:1px solid var(--outv);border-radius:7px;padding:6px 11px;font-size:11px;font-weight:600;color:var(--txt);box-shadow:0 1px 6px rgba(7,30,39,.08);transition:.15s;}
+.cbtn:hover{background:var(--s1);}
+.cbtn.on{background:var(--pri);color:#fff;border-color:var(--pri);}
+.cbtn svg{width:13px;height:13px;flex-shrink:0;}
+
+.legend{position:absolute;bottom:16px;right:14px;z-index:400;background:var(--s0);border:1px solid var(--outv);border-radius:9px;padding:10px 13px;box-shadow:0 1px 8px rgba(7,30,39,.07);}
+.ltitle{font-family:'DM Mono',monospace;font-size:9px;color:var(--out);text-transform:uppercase;letter-spacing:.1em;margin-bottom:7px;}
+.lrow{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--txt2);margin-bottom:4px;}
+.ldotl{width:10px;height:10px;border-radius:50%;border:2px solid rgba(255,255,255,.7);}
+
+.detail{position:absolute;top:0;right:0;bottom:0;width:360px;background:var(--s0);border-left:1px solid var(--outv);box-shadow:-4px 0 20px rgba(7,30,39,.08);z-index:500;display:flex;flex-direction:column;transform:translateX(100%);transition:transform .28s cubic-bezier(.4,0,.2,1);}
+.detail.open{transform:translateX(0);}
+.dhead{padding:14px 16px;border-bottom:1px solid var(--outv);display:flex;align-items:flex-start;justify-content:space-between;flex-shrink:0;}
+.dtitle{font-size:17px;font-weight:800;}
+.dsub{font-family:'DM Mono',monospace;font-size:9px;color:var(--out);margin-top:3px;}
+.dclose{font-size:20px;color:var(--out);line-height:1;padding:2px;}
+.dclose:hover{color:var(--txt);}
+.dscroll{flex:1;overflow-y:auto;padding:14px 16px;display:flex;flex-direction:column;gap:14px;}
+.dscroll::-webkit-scrollbar{width:3px;}
+.dscroll::-webkit-scrollbar-thumb{background:var(--outv);border-radius:2px;}
+.gauge{text-align:center;padding:4px 0;}
+.gnum{font-size:48px;font-weight:800;line-height:1;}
+.glbl{font-size:11px;color:var(--out);margin-top:2px;}
+.gtrack{height:7px;background:var(--s2);border-radius:4px;overflow:hidden;margin-top:10px;}
+.gfill{height:100%;border-radius:4px;transition:width .6s ease;}
+.igrid{display:grid;grid-template-columns:1fr 1fr;gap:7px;}
+.ic{background:var(--bg);border-radius:9px;padding:10px 11px;}
+.iclbl{font-size:9px;font-weight:600;color:var(--out);text-transform:uppercase;letter-spacing:.09em;}
+.icval{font-size:12px;font-weight:700;margin-top:3px;}
+.tl{display:flex;flex-direction:column;}
+.tli{display:flex;gap:10px;padding-bottom:14px;position:relative;}
+.tli::before{content:'';position:absolute;left:6px;top:14px;bottom:0;width:2px;background:var(--outv);}
+.tli:last-child::before{display:none;}
+.tldot{width:14px;height:14px;border-radius:50%;border:2.5px solid var(--s0);flex-shrink:0;margin-top:2px;}
+.tltime{font-family:'DM Mono',monospace;font-size:9px;font-weight:500;letter-spacing:.05em;}
+.tlev{font-size:12px;font-weight:700;margin-top:1px;}
+.tlnote{font-size:10px;color:var(--txt2);margin-top:1px;}
+.arow{display:flex;gap:7px;}
+.abtn{flex:1;display:flex;align-items:center;justify-content:center;gap:6px;padding:10px 8px;border-radius:9px;font-size:11px;font-weight:700;transition:.15s;}
+.abtn svg{width:15px;height:15px;flex-shrink:0;}
+.abtn.pri{background:var(--pri);color:#fff;}
+.abtn.pri:hover{background:var(--pri2);}
+.abtn.sec{background:var(--s1);color:var(--txt);border:1px solid var(--outv);}
+.abtn.sec:hover{background:var(--s2);}
+.abtn.ter{background:rgba(114,0,9,.07);color:var(--ter);border:1px solid rgba(114,0,9,.2);}
+.abtn.ter:hover{background:rgba(114,0,9,.13);}
+.abtn.done{background:rgba(27,109,36,.1);color:var(--sec);border:1px solid rgba(27,109,36,.25);}
+
+/* ML Prediction panel inside detail */
+.mlpanel{background:linear-gradient(135deg,rgba(0,49,120,.05),rgba(13,71,161,.08));border:1px solid rgba(0,49,120,.15);border-radius:11px;padding:13px;}
+.mlp-title{font-family:'DM Mono',monospace;font-size:9px;color:var(--pri);font-weight:500;text-transform:uppercase;letter-spacing:.12em;margin-bottom:10px;display:flex;align-items:center;gap:5px;}
+.mlp-title svg{width:11px;height:11px;}
+.mlp-label{font-size:20px;font-weight:800;color:var(--pri);}
+.mlp-conf{font-size:11px;color:var(--out);margin-top:2px;}
+.prob-bars{margin-top:10px;display:flex;flex-direction:column;gap:5px;}
+.prob-row{display:flex;align-items:center;gap:7px;}
+.prob-name{font-family:'DM Mono',monospace;font-size:9px;width:52px;flex-shrink:0;color:var(--txt2);}
+.prob-track{flex:1;height:5px;background:var(--s2);border-radius:3px;overflow:hidden;}
+.prob-fill{height:100%;border-radius:3px;transition:width .5s ease;}
+.prob-val{font-family:'DM Mono',monospace;font-size:9px;color:var(--out);width:30px;text-align:right;}
+.spec-img{width:100%;border-radius:9px;margin-top:8px;display:block;}
+.spec-loading{text-align:center;padding:20px;font-size:11px;color:var(--out);}
+
+.routebar{position:absolute;bottom:0;left:0;right:0;z-index:600;background:var(--s0);border-top:1px solid var(--outv);box-shadow:0 -3px 16px rgba(7,30,39,.08);padding:11px 16px;display:none;align-items:center;gap:14px;}
+.routebar.show{display:flex;}
+.rbstats{display:flex;gap:16px;flex-shrink:0;}
+.rbs .rv{font-size:18px;font-weight:800;color:var(--pri);}
+.rbs .rl{font-size:9px;color:var(--out);font-weight:600;text-transform:uppercase;letter-spacing:.07em;}
+.rbchips{flex:1;display:flex;gap:5px;overflow-x:auto;scrollbar-width:none;align-items:center;}
+.rbchips::-webkit-scrollbar{display:none;}
+.rbc{display:flex;align-items:center;gap:5px;background:var(--s1);border:1px solid var(--outv);border-radius:20px;padding:4px 10px;font-size:10px;font-weight:600;white-space:nowrap;flex-shrink:0;}
+.rbn{width:16px;height:16px;border-radius:50%;background:var(--pri);color:#fff;font-size:8px;font-weight:700;display:flex;align-items:center;justify-content:center;}
+
+.page{display:none;position:fixed;top:var(--nav);left:0;right:0;bottom:0;background:var(--bg);overflow-y:auto;z-index:1000;}
+.page.show{display:block;}
+.pi{padding:24px 28px;max-width:960px;margin:0 auto;}
+.ph{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:20px;}
+.ptitle{font-size:26px;font-weight:800;}
+.pclose{display:flex;align-items:center;gap:6px;border:1px solid var(--outv);border-radius:8px;padding:7px 14px;font-size:12px;font-weight:600;color:var(--txt);}
+.pclose:hover{background:var(--s1);}
+.pclose svg{width:13px;height:13px;}
+
+.albadge{display:flex;align-items:center;gap:7px;font-size:12px;color:var(--txt2);margin-top:5px;}
+.epulse{width:8px;height:8px;border-radius:50%;background:var(--ter);animation:ring 2s infinite;}
+@keyframes ring{0%{transform:scale(.95);box-shadow:0 0 0 0 rgba(114,0,9,.6)}70%{transform:scale(1);box-shadow:0 0 0 9px rgba(114,0,9,0)}100%{transform:scale(.95)}}
+.acard{background:var(--s0);border-radius:13px;padding:18px 20px;margin-bottom:12px;border-left:4px solid;}
+.acard.c{border-color:var(--ter);}
+.acard.w{border-color:#d97706;}
+.atop{display:flex;justify-content:space-between;align-items:flex-start;}
+.abadge{display:inline-flex;align-items:center;gap:4px;font-size:9px;font-weight:700;padding:2px 8px;border-radius:50px;text-transform:uppercase;letter-spacing:.07em;margin-bottom:6px;}
+.abadge.c{background:var(--ter-c);color:#fff;}
+.abadge.w{background:#fef3c7;color:#92400e;}
+.atitle{font-size:17px;font-weight:800;}
+.ameta{font-size:12px;color:var(--txt2);margin-top:3px;}
+.atimer{font-family:'DM Mono',monospace;font-size:24px;font-weight:700;}
+.atl{font-size:9px;color:var(--out);text-transform:uppercase;font-weight:600;letter-spacing:.07em;}
+.apbar{height:4px;background:var(--s2);border-radius:2px;overflow:hidden;margin:12px 0 14px;}
+.apfill{height:100%;border-radius:2px;}
+.aacts{display:flex;gap:7px;flex-wrap:wrap;}
+.ab2{display:flex;align-items:center;gap:5px;padding:8px 14px;border-radius:8px;font-size:11px;font-weight:700;transition:.15s;}
+.ab2 svg{width:13px;height:13px;flex-shrink:0;}
+.ab2.d{background:var(--ter);color:#fff;}
+.ab2.d:hover{opacity:.88;}
+.ab2.g{background:var(--s2);color:var(--txt);}
+.ab2.g:hover{background:var(--s3);}
+.ab2.p{background:var(--pri);color:#fff;}
+.ab2.p:hover{background:var(--pri2);}
+.ab2.ack{background:var(--sec-c);color:var(--sec-ct);}
+
+/* ML-enhanced alerts */
+.ml-alert-badge{display:inline-flex;align-items:center;gap:4px;background:rgba(0,49,120,.09);color:var(--pri);border:1px solid rgba(0,49,120,.2);border-radius:5px;padding:2px 7px;font-family:'DM Mono',monospace;font-size:9px;font-weight:500;margin-left:6px;}
+
+.repgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:18px;}
+.repkpi{background:var(--s0);border:1px solid var(--outv);border-radius:11px;padding:16px;}
+.kl{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.12em;color:var(--out);margin-bottom:6px;}
+.kv{font-size:26px;font-weight:800;line-height:1;}
+.ks{font-size:11px;color:var(--txt2);margin-top:4px;}
+.repcharts{display:grid;grid-template-columns:3fr 2fr;gap:12px;margin-bottom:14px;}
+.repc{background:var(--s0);border:1px solid var(--outv);border-radius:11px;padding:16px;}
+.repc h3{font-size:13px;font-weight:700;margin-bottom:14px;}
+.bars{display:flex;align-items:flex-end;gap:6px;height:110px;}
+.bcol{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;height:100%;justify-content:flex-end;}
+.bbar{width:100%;border-radius:4px 4px 0 0;min-height:3px;}
+.bday{font-size:8px;color:var(--out);font-weight:600;}
+table{width:100%;border-collapse:collapse;}
+table th{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.09em;color:var(--out);padding:7px 10px;text-align:left;border-bottom:1px solid var(--outv);}
+table td{font-size:12px;padding:9px 10px;border-bottom:1px solid var(--s1);}
+table tr:last-child td{border-bottom:none;}
+.rpill{font-size:9px;font-weight:700;padding:2px 7px;border-radius:4px;text-transform:uppercase;}
+
+/* ML model panel on Reports page */
+.ml-report-panel{background:var(--s0);border:1px solid var(--outv);border-radius:11px;padding:16px;margin-bottom:14px;}
+.ml-report-panel h3{font-size:13px;font-weight:700;margin-bottom:12px;}
+.conf-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;}
+.conf-cell{background:var(--bg);border-radius:8px;padding:10px;text-align:center;}
+.conf-cls{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--out);margin-bottom:4px;}
+.conf-val{font-size:20px;font-weight:800;}
+
+@keyframes smoke{0%{transform:translateY(0) scale(1);opacity:.7;}100%{transform:translateY(-10px) scale(1.8);opacity:0;}}
+@keyframes gpspulse{0%{transform:scale(1);opacity:.6;}70%{transform:scale(2.4);opacity:0;}100%{transform:scale(1);opacity:0;}}
+@keyframes collectpulse{0%{transform:scale(1);box-shadow:0 0 0 0 rgba(27,109,36,.7);}50%{transform:scale(1.3);box-shadow:0 0 0 16px rgba(27,109,36,0);}100%{transform:scale(1);box-shadow:0 0 0 0 rgba(27,109,36,0);}}
+#toasts{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);z-index:9000;display:flex;flex-direction:column;gap:6px;pointer-events:none;align-items:center;}
+.toast{background:var(--inv);color:#fff;padding:9px 16px;border-radius:8px;font-size:12px;font-weight:500;opacity:0;transform:translateY(8px);transition:all .22s;box-shadow:0 3px 14px rgba(0,0,0,.2);white-space:nowrap;}
+.toast.show{opacity:1;transform:translateY(0);}
+.toast.s{border-left:3px solid #a3f69c;}
+.toast.e{border-left:3px solid var(--ter);}
+.toast.i{border-left:3px solid #60a5fa;}
+
+/* Depot tooltip */
+.depot-tooltip{background:#003178;color:#fff;border:none;border-radius:6px;font-family:'Manrope',sans-serif;font-size:11px;font-weight:700;padding:4px 10px;box-shadow:0 2px 10px rgba(0,49,120,.3);}
+.depot-tooltip::before{border-top-color:#003178;}
+
+/* API status indicator */
+.api-status{display:flex;align-items:center;gap:5px;font-family:'DM Mono',monospace;font-size:9px;padding:4px 9px;border-radius:5px;border:1px solid var(--outv);}
+.api-dot{width:6px;height:6px;border-radius:50%;}
+.api-status.online .api-dot{background:#1b6d24;animation:blink 3s infinite;}
+.api-status.offline .api-dot{background:#9ca3af;}
+.api-status.online{color:var(--sec-ct);}
+.api-status.offline{color:var(--out);}
+</style>
+</head>
+<body>
+<div class="app">
+
+<!-- TOPNAV -->
+<nav>
+  <div class="nb">
+    <div class="ni">
+      <svg fill="none" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3" fill="#fff"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M5.6 18.4l2.1-2.1M16.3 7.7l2.1-2.1" stroke="#fff" stroke-width="2" stroke-linecap="round"/></svg>
+    </div>
+    <span class="nm">Sentinel Hub</span>
+    <div class="mlbadge" style="margin-left:8px;">
+      <svg fill="none" viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      STF · ML
+    </div>
+    <div class="tabs" style="margin-left:10px;">
+      <button class="tab on" id="t-map"     onclick="goPage('map',this)">Live Map</button>
+      <button class="tab"    id="t-alerts"  onclick="goPage('alerts',this)">Alerts</button>
+      <button class="tab"    id="t-reports" onclick="goPage('reports',this)">Reports</button>
+    </div>
+  </div>
+  <div class="nr">
+    <div class="api-status offline" id="api-status-pill">
+      <div class="api-dot"></div>
+      <span id="api-status-txt">API</span>
+    </div>
+    <button class="gpsbtn" onclick="locateUser()">
+      <svg fill="none" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3" stroke="#fff" stroke-width="2"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3" stroke="#fff" stroke-width="2" stroke-linecap="round"/></svg>
+      Track My GPS
+    </button>
+    <div class="lpill"><div class="ldot"></div><span class="ltxt">LIVE</span></div>
+    <span class="clk" id="clk">--:--:--</span>
+    <div class="ava">MK</div>
+  </div>
+</nav>
+
+<!-- BODY -->
+<div class="body">
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div class="sbscroll">
+      <div>
+        <div class="sblbl">System Overview</div>
+        <div class="metrics">
+          <div class="mc"><div class="ml">Avg Fill</div><div class="mv" id="m-avg">—<small>%</small></div></div>
+          <div class="mc"><div class="ml">Critical</div><div class="mv" id="m-crit" style="color:var(--ter)">—</div></div>
+          <div class="mc"><div class="ml">Active Trucks</div><div class="mv">6<small>units</small></div></div>
+          <div class="mc"><div class="ml">ML Accuracy</div><div class="mv" style="color:var(--pri)" id="m-acc">—<small>%</small></div></div>
+        </div>
+      </div>
+
+      <!-- ML Model Status Card -->
+      <div class="mlcard">
+        <div class="mct">🧠 STF Model</div>
+        <div class="mcacc" id="ml-acc-big">—</div>
+        <div class="mcv">Gradient Boosting Fusion</div>
+        <div class="mcsub" id="ml-status-txt">Connecting to API...</div>
+      </div>
+
+      <div>
+        <div class="sblbl">Bin Registry</div>
+        <div class="binlist" id="binlist"></div>
+      </div>
+
+      <div class="sustain">
+        <div class="slbl">Sustainability Index</div>
+        <div class="sval">94.8</div>
+        <div class="sdesc">12% above last week. Overflow reduction at 42.8% vs static schedules.</div>
+        <div class="strack"><div class="sfill" style="width:94.8%"></div></div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- MAP AREA -->
+  <div class="maparea" id="maparea">
+    <div id="map"></div>
+    <div class="mctrl">
+      <button class="cbtn on" id="cb-all" onclick="filterMap('all',this)">
+        <svg fill="none" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1" stroke="currentColor" stroke-width="2"/><rect x="14" y="3" width="7" height="7" rx="1" stroke="currentColor" stroke-width="2"/><rect x="3" y="14" width="7" height="7" rx="1" stroke="currentColor" stroke-width="2"/><rect x="14" y="14" width="7" height="7" rx="1" stroke="currentColor" stroke-width="2"/></svg>
+        All Bins
+      </button>
+      <button class="cbtn" id="cb-crit" onclick="filterMap('critical',this)">
+        <svg fill="none" viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0zM12 9v4M12 17h.01" stroke="#720009" stroke-width="2" stroke-linecap="round"/></svg>
+        Critical Only
+      </button>
+      <button class="cbtn" id="cb-route" onclick="buildRoute()">
+        <svg fill="none" viewBox="0 0 24 24"><path d="M3 12h18M3 6l9-3 9 3M3 18l9 3 9-3" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+        Optimal Route
+      </button>
+      <button class="cbtn" id="cb-heat" onclick="toggleHeat()">
+        <svg fill="none" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="12" r="5" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="12" r="1" fill="currentColor"/></svg>
+        Heatmap
+      </button>
+      <button class="cbtn" onclick="refreshMLPredictions()">
+        <svg fill="none" viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        ML Refresh
+      </button>
+    </div>
+
+    <div class="legend">
+      <div class="ltitle">Fill Level</div>
+      <div class="lrow"><div class="ldotl" style="background:#720009"></div>Critical ≥90%</div>
+      <div class="lrow"><div class="ldotl" style="background:#d97706"></div>Warning ≥70%</div>
+      <div class="lrow"><div class="ldotl" style="background:#1b6d24"></div>Normal ≥40%</div>
+      <div class="lrow"><div class="ldotl" style="background:#003178"></div>Low &lt;40%</div>
+    </div>
+
+    <!-- DETAIL PANEL -->
+    <div class="detail" id="detail">
+      <div class="dhead">
+        <div><div class="dtitle" id="d-name">—</div><div class="dsub" id="d-sensor">—</div></div>
+        <button class="dclose" onclick="closeDetail()">✕</button>
+      </div>
+      <div class="dscroll">
+        <div class="gauge">
+          <div class="gnum" id="d-pct">—</div>
+          <div class="glbl">Current Fill Level</div>
+          <div class="gtrack"><div class="gfill" id="d-bar"></div></div>
+        </div>
+
+        <!-- ML Prediction Panel -->
+        <div class="mlpanel">
+          <div class="mlp-title">
+            <svg fill="none" viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+            STF · ML Prediction
+          </div>
+          <div id="d-ml-label" class="mlp-label">—</div>
+          <div id="d-ml-conf" class="mlp-conf">—</div>
+          <div class="prob-bars" id="d-prob-bars"></div>
+          <div id="d-spec-wrap" class="spec-loading">Running STF model...</div>
+        </div>
+
+        <div class="igrid">
+          <div class="ic"><div class="iclbl">Overflow ETA</div><div class="icval" id="d-eta">—</div></div>
+          <div class="ic"><div class="iclbl">Waste Type</div><div class="icval" id="d-type">—</div></div>
+          <div class="ic"><div class="iclbl">Last Collected</div><div class="icval" id="d-last">—</div></div>
+          <div class="ic"><div class="iclbl">Truck Assigned</div><div class="icval" id="d-truck">—</div></div>
+          <div class="ic"><div class="iclbl">Sector</div><div class="icval" id="d-sector">—</div></div>
+          <div class="ic"><div class="iclbl">Coordinates</div><div class="icval" id="d-coords" style="font-family:'DM Mono',monospace;font-size:10px;">—</div></div>
+        </div>
+
+        <div>
+          <div style="font-size:12px;font-weight:700;margin-bottom:10px;">Predictive Timeline</div>
+          <div class="tl" id="d-tl"></div>
+        </div>
+
+        <div class="arow">
+          <button class="abtn pri" id="d-dispatch" onclick="doDispatch()">
+            <svg viewBox="0 0 24 24" fill="none"><path d="M1 3h15l3 6-3 6H1V3z" stroke="currentColor" stroke-width="2"/><circle cx="5" cy="18" r="2" stroke="currentColor" stroke-width="2"/><circle cx="14" cy="18" r="2" stroke="currentColor" stroke-width="2"/></svg>
+            Dispatch Truck
+          </button>
+          <button class="abtn ter" onclick="doEmergency()">
+            <svg viewBox="0 0 24 24" fill="none"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0zM12 9v4M12 17h.01" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+            Emergency
+          </button>
+        </div>
+        <div class="arow">
+          <button class="abtn sec" onclick="doAddRoute()">
+            <svg viewBox="0 0 24 24" fill="none"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+            Add to Route
+          </button>
+          <button class="abtn" id="d-ack" onclick="doAck()">
+            <svg viewBox="0 0 24 24" fill="none"><path d="M20 6L9 17l-5-5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            Acknowledge
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ROUTE BAR -->
+    <div class="routebar" id="routebar">
+      <div class="rbstats">
+        <div class="rbs"><div class="rv" id="rb-km">—</div><div class="rl">km total</div></div>
+        <div class="rbs"><div class="rv" id="rb-min">—</div><div class="rl">min est.</div></div>
+        <div class="rbs"><div class="rv" id="rb-n">—</div><div class="rl">stops</div></div>
+      </div>
+      <div class="rbchips" id="rb-chips"></div>
+      <button class="cbtn" style="flex-shrink:0" onclick="clearRoute()">✕ Clear Route</button>
+    </div>
+  </div><!-- /maparea -->
+</div><!-- /body -->
+
+<!-- ALERTS PAGE -->
+<div class="page" id="p-alerts">
+  <div class="pi">
+    <div class="ph">
+      <div>
+        <div class="ptitle">Emergency Alerts</div>
+        <div class="albadge"><div class="epulse"></div><span id="al-count">—</span></div>
+      </div>
+      <button class="pclose" onclick="goPage('map',document.getElementById('t-map'))">
+        <svg fill="none" viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+        Close
+      </button>
+    </div>
+    <div id="al-body"></div>
+  </div>
+</div>
+
+<!-- REPORTS PAGE -->
+<div class="page" id="p-reports">
+  <div class="pi">
+    <div class="ph">
+      <div>
+        <div class="ptitle">Reports & Analytics</div>
+        <div style="font-size:12px;color:var(--txt2);margin-top:4px;">STFT ML · Predictive Fleet & Waste Intelligence</div>
+      </div>
+      <button class="pclose" onclick="goPage('map',document.getElementById('t-map'))">
+        <svg fill="none" viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+        Close
+      </button>
+    </div>
+    <div class="repgrid">
+      <div class="repkpi"><div class="kl">Overflow Reduction</div><div class="kv" style="color:var(--sec)">42.8%</div><div class="ks">↑ 4% month-on-month</div></div>
+      <div class="repkpi"><div class="kl">Avg Response Time</div><div class="kv">18.4<span style="font-size:13px;font-weight:500"> min</span></div><div class="ks">↓ 6 min vs legacy</div></div>
+      <div class="repkpi"><div class="kl">Empty Pickups Saved</div><div class="kv" id="r-empty" style="color:var(--pri)">—</div><div class="ks">This week</div></div>
+      <div class="repkpi"><div class="kl">Fleet Cost Savings</div><div class="kv" style="color:var(--sec)">28%</div><div class="ks">vs static schedule</div></div>
+    </div>
+
+    <!-- ML Model Performance -->
+    <div class="ml-report-panel">
+      <h3>🧠 STF Model — Classification Confidence (Live)</h3>
+      <div class="conf-grid" id="r-conf-grid">
+        <div class="conf-cell"><div class="conf-cls">Low</div><div class="conf-val" style="color:#003178">—</div></div>
+        <div class="conf-cell"><div class="conf-cls">Medium</div><div class="conf-val" style="color:#1b6d24">—</div></div>
+        <div class="conf-cell"><div class="conf-cls">High</div><div class="conf-val" style="color:#d97706">—</div></div>
+        <div class="conf-cell"><div class="conf-cls">Critical</div><div class="conf-val" style="color:#720009">—</div></div>
+      </div>
+      <div style="margin-top:10px;font-size:10px;color:var(--out);" id="r-ml-method">Method: Spatial-Temporal Fusion · 5-fold CV accuracy shown above</div>
+    </div>
+
+    <div class="repcharts">
+      <div class="repc">
+        <h3>7-Day Fill Level Trend</h3>
+        <div class="bars" id="r-bars"></div>
+      </div>
+      <div class="repc">
+        <h3>Predicted Hotspots (24h)</h3>
+        <table><thead><tr><th>Location</th><th>ML Risk</th><th>ETA</th></tr></thead><tbody id="r-hs"></tbody></table>
+      </div>
+    </div>
+    <div class="repc" style="margin-top:12px;">
+      <h3>All Bins — ML Predicted Status</h3>
+      <table><thead><tr><th>Bin</th><th>Location</th><th>Fill</th><th>ML Label</th><th>Confidence</th><th>Truck</th><th>Status</th></tr></thead><tbody id="r-all"></tbody></table>
+    </div>
+  </div>
+</div>
+
+</div><!-- /app -->
+<div id="toasts"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script>
+// ─────────────────────────────────────────────────────────────
+//  SENTINEL HUB  —  Auto-Dispatch, Multi-Stop Collection
+//  Truck leaves Hub, collects every bin ≥70% on the way,
+//  drives real roads (OSRM), returns to Hub automatically.
+// ─────────────────────────────────────────────────────────────
+
+var DEPOT = { lat:13.0950, lng:80.2350, name:'Chennai Waste Hub' };
+
+var BINS = [
+  {id:'B-001',name:'Central Market',     lat:13.0827,lng:80.2707,fill:94,type:'Mixed General', last:'04:30 AM',truck:'T-01',sector:'Alpha'},
+  {id:'B-002',name:'Marina Beach North', lat:13.0500,lng:80.2824,fill:91,type:'Mixed Waste',   last:'06:00 AM',truck:'T-02',sector:'Beta'},
+  {id:'B-003',name:'Egmore Station',     lat:13.0732,lng:80.2609,fill:87,type:'Recyclable',    last:'04:45 AM',truck:'T-01',sector:'Alpha'},
+  {id:'B-004',name:'T.Nagar Hub',        lat:13.0418,lng:80.2341,fill:83,type:'Organic',       last:'06:30 AM',truck:'T-02',sector:'Gamma'},
+  {id:'B-005',name:'Anna Salai',         lat:13.0569,lng:80.2521,fill:78,type:'General',       last:'07:00 AM',truck:'T-01',sector:'Beta'},
+  {id:'B-006',name:'Velachery Market',   lat:12.9784,lng:80.2209,fill:96,type:'Organic',       last:'04:00 AM',truck:'T-03',sector:'Delta'},
+  {id:'B-007',name:'Adyar Junction',     lat:13.0067,lng:80.2563,fill:85,type:'Recyclable',    last:'07:15 AM',truck:'T-02',sector:'Gamma'},
+  {id:'B-008',name:'Nungambakkam',       lat:13.0604,lng:80.2428,fill:74,type:'General',       last:'07:30 AM',truck:'T-01',sector:'Alpha'},
+  {id:'B-009',name:'Porur Junction',     lat:13.0359,lng:80.1574,fill:90,type:'Mixed Waste',   last:'05:45 AM',truck:'T-04',sector:'Epsilon'},
+  {id:'B-010',name:'Guindy Industrial',  lat:13.0067,lng:80.2197,fill:98,type:'Hazardous',     last:'05:00 AM',truck:'T-03',sector:'Delta'},
+  {id:'B-011',name:'Sholinganallur',     lat:12.9010,lng:80.2279,fill:81,type:'Recyclable',    last:'08:30 AM',truck:'T-04',sector:'Zeta'},
+  {id:'B-012',name:'Tambaram',           lat:12.9249,lng:80.1000,fill:88,type:'General',       last:'08:00 AM',truck:'T-03',sector:'Zeta'},
+];
+
+// State
+var mlPredictions = {};
+var collecting    = {};   // id -> true while bin is being collected this mission
+var acked         = {};
+var fillRates     = {};
+var selId         = null;
+var alTimerSecs   = {};
+var alTimerHandle = null;
+var heatCircles   = [];
+var userMk        = null;
+var map, markers  = {};
+var API_ONLINE    = false;
+var API_BASE      = 'http://localhost:5000/api';
+var missionActive = false;
+
+// Helpers
+function fc(f)  { return f>=90?'#720009':f>=70?'#d97706':f>=40?'#1b6d24':'#003178'; }
+function eta(f) { return f>=95?'< 30 min':f>=90?'~ 1 hr':f>=80?'3-4 hrs':f>=70?'6-8 hrs':'> 12 hrs'; }
+function rl(f)  { return f>=90?'Critical':f>=70?'High':f>=50?'Medium':'Low'; }
+function pad(n) { return String(n).padStart(2,'0'); }
+
+function rulePredict(fill) {
+  var label = rl(fill);
+  var p = {Low:0,Medium:0,High:0,Critical:0};
+  if(fill>=90)      { p.Critical=0.85;p.High=0.12;p.Medium=0.02;p.Low=0.01; }
+  else if(fill>=70) { p.High=0.80;p.Critical=0.10;p.Medium=0.08;p.Low=0.02; }
+  else if(fill>=40) { p.Medium=0.78;p.High=0.12;p.Low=0.08;p.Critical=0.02; }
+  else              { p.Low=0.82;p.Medium=0.13;p.High=0.04;p.Critical=0.01; }
+  return {label:label, confidence:p[label], probabilities:p, method:'STF'};
+}
+
+// ── MAP ──────────────────────────────────────────────────────
+function initMap() {
+  map = L.map('map',{zoomControl:true}).setView([13.030,80.210],12);
+  var osm = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© OpenStreetMap'});
+  var carto = L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',{maxZoom:19,subdomains:'abcd'});
+  osm.addTo(map);
+  osm.on('tileerror',function(){ map.removeLayer(osm); carto.addTo(map); });
+  setTimeout(function(){ map.invalidateSize(); },100);
+  placeDepot();
+  BINS.forEach(function(b){ addMarker(b); });
+}
+
+function placeDepot() {
+  var html = '<div style="text-align:center;">' +
+    '<div style="width:48px;height:48px;background:#003178;border-radius:12px;border:3px solid #fff;' +
+    'box-shadow:0 4px 18px rgba(0,49,120,.5);display:flex;align-items:center;justify-content:center;font-size:22px;">🏭</div>' +
+    '<div style="margin-top:3px;background:#003178;color:#fff;font-size:8px;font-weight:800;' +
+    'padding:2px 7px;border-radius:4px;white-space:nowrap;">WASTE HUB</div></div>';
+  L.marker([DEPOT.lat,DEPOT.lng],{
+    icon:L.divIcon({html:html,className:'',iconSize:[48,68],iconAnchor:[24,68]}),
+    zIndexOffset:3000
+  }).addTo(map).bindTooltip('<b>'+DEPOT.name+'</b><br>Truck starts & returns here',{direction:'right',className:'depot-tip'});
+}
+
+function makeIcon(b) {
+  var c = fc(b.fill);
+  var pulse = b.fill>=90 ? 'animation:mring 1.5s infinite;' : '';
+  var html = '<div style="width:36px;height:36px;border-radius:50%;background:'+c+';border:3px solid #fff;' +
+    'display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:#fff;' +
+    'box-shadow:0 3px 10px rgba(0,0,0,.3);cursor:pointer;'+pulse+'">'+Math.round(b.fill)+'%</div>';
+  return L.divIcon({html:html,className:'',iconSize:[36,36],iconAnchor:[18,18]});
+}
+function addMarker(b) {
+  var m = L.marker([b.lat,b.lng],{icon:makeIcon(b)}).addTo(map).on('click',function(){ openDetail(b.id); });
+  markers[b.id] = m;
+}
+function refreshMarker(b) {
+  if(markers[b.id]) map.removeLayer(markers[b.id]);
+  addMarker(b);
+}
+
+// ── MAP CONTROLS ─────────────────────────────────────────────
+var heatOn = false;
+function filterMap(mode,btn) {
+  document.querySelectorAll('.cbtn').forEach(function(x){ x.classList.remove('on'); });
+  btn.classList.add('on');
+  BINS.forEach(function(b){
+    var m = markers[b.id]; if(!m) return;
+    if(mode==='all') m.addTo(map);
+    else if(mode==='critical') { if(b.fill>=90) m.addTo(map); else map.removeLayer(m); }
+  });
+}
+function toggleHeat() {
+  heatOn = !heatOn;
+  document.getElementById('cb-heat').classList.toggle('on',heatOn);
+  heatCircles.forEach(function(c){ map.removeLayer(c); }); heatCircles = [];
+  if(heatOn) heatCircles = BINS.map(function(b){
+    return L.circle([b.lat,b.lng],{radius:400,color:fc(b.fill),fillColor:fc(b.fill),fillOpacity:.18,weight:0}).addTo(map);
+  });
+}
+function buildRoute() {
+  var stops = BINS.filter(function(b){ return b.fill>=70; }).sort(function(a,b){ return b.fill-a.fill; });
+  if(!stops.length){ toast('No high-fill bins right now','i'); return; }
+  document.getElementById('rb-km').textContent = (stops.length*2.1+1.5).toFixed(1);
+  document.getElementById('rb-min').textContent = Math.round(stops.length*8+10);
+  document.getElementById('rb-n').textContent = stops.length;
+  document.getElementById('rb-chips').innerHTML = stops.map(function(b,i){
+    return '<div class="rbc"><div class="rbn">'+(i+1)+'</div>'+b.name+'</div>';
+  }).join('');
+  document.getElementById('routebar').classList.add('show');
+  document.getElementById('cb-route').classList.add('on');
+  toast('Route: '+stops.length+' stops planned','s');
+}
+function clearRoute() {
+  document.getElementById('routebar').classList.remove('show');
+  document.getElementById('cb-route').classList.remove('on');
+}
+function locateUser() {
+  if(!navigator.geolocation){ toast('Geolocation not supported','e'); return; }
+  navigator.geolocation.getCurrentPosition(function(pos){
+    var ll = [pos.coords.latitude,pos.coords.longitude];
+    if(userMk) map.removeLayer(userMk);
+    userMk = L.marker(ll,{icon:L.divIcon({html:'<div style="width:20px;height:20px;border-radius:50%;background:#003178;border:3px solid #fff;"></div>',className:'',iconSize:[20,20],iconAnchor:[10,10]})}).addTo(map);
+    map.setView(ll,14,{animate:true}); toast('GPS located','s');
+  },function(){ toast('Could not get location','e'); });
+}
+function refreshMLPredictions(){ toast('Refreshing...','i'); checkAPI(); }
+
+// ── OSRM DECODE ──────────────────────────────────────────────
+function decodePolyline(str) {
+  var idx=0,lat=0,lng=0,out=[];
+  while(idx<str.length){
+    var b,sh=0,res=0;
+    do{ b=str.charCodeAt(idx++)-63; res|=(b&31)<<sh; sh+=5; }while(b>=32);
+    lat += (res&1)?~(res>>1):(res>>1);
+    sh=0; res=0;
+    do{ b=str.charCodeAt(idx++)-63; res|=(b&31)<<sh; sh+=5; }while(b>=32);
+    lng += (res&1)?~(res>>1):(res>>1);
+    out.push([lat/1e5,lng/1e5]);
+  }
+  return out;
+}
+
+// ── ANIMATE TRUCK ALONG COORDS ───────────────────────────────
+function animatePath(mkr, coords, ms, done) {
+  var i = 0;
+  var iv = setInterval(function(){
+    if(i >= coords.length){ clearInterval(iv); if(done) done(); return; }
+    mkr.setLatLng(coords[i++]);
+  }, ms);
+}
+
+// ── TRUCK ICONS ───────────────────────────────────────────────
+function iconTruck(flip) {
+  return L.divIcon({
+    html: '<div style="font-size:26px;line-height:1;'+(flip?'transform:scaleX(-1);':'')+
+          'filter:drop-shadow(0 2px 8px rgba(0,0,0,.5));">\u{1F69B}</div>',
+    className:'', iconSize:[32,32], iconAnchor:[16,16]
+  });
+}
+function iconCollect() {
+  return L.divIcon({
+    html: '<div style="font-size:24px;display:inline-block;animation:spin .5s linear infinite;">\u267B\uFE0F</div>',
+    className:'', iconSize:[32,32], iconAnchor:[16,16]
+  });
+}
+
+// ── COLLECT ONE BIN (reset fill, update UI) ───────────────────
+function collectBin(b) {
+  b.fill = Math.round(3 + Math.random()*5);
+  b.last = new Date().toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit',hour12:true});
+  fillRates[b.id] = 1.2 + Math.random()*0.8;
+  mlPredictions[b.id] = {label:'Low',confidence:0.95,
+    probabilities:{Low:0.95,Medium:0.03,High:0.01,Critical:0.01},method:'STF (post-collection)'};
+  delete collecting[b.id];
+  refreshMarker(b);
+  renderSidebar();
+  updateMetrics();
+  if(selId===b.id && document.getElementById('detail').classList.contains('open')) openDetail(b.id);
+}
+
+// ── GREEN FLASH AT BIN ────────────────────────────────────────
+function flashBin(b) {
+  var r1 = L.circle([b.lat,b.lng],{radius:220,color:'#1b6d24',fillColor:'#a3f69c',fillOpacity:.35,weight:2}).addTo(map);
+  var r2 = L.circle([b.lat,b.lng],{radius:80, color:'#a3f69c',fillColor:'#a3f69c',fillOpacity:.55,weight:0}).addTo(map);
+  setTimeout(function(){ map.removeLayer(r1); map.removeLayer(r2); },2000);
+}
+
+// ════════════════════════════════════════════════════════════
+//  LAUNCH MISSION
+//  Picks up all bins >= threshold, routes via OSRM,
+//  animates truck stop-by-stop, resets each bin on arrival.
+//  Falls back to straight-line if OSRM is unreachable.
+// ════════════════════════════════════════════════════════════
+function launchMission() {
+  if(missionActive) return;
+
+  var stops = BINS
+    .filter(function(b){ return b.fill >= 70 && !collecting[b.id]; })
+    .sort(function(a,b){ return b.fill - a.fill; });
+
+  if(!stops.length) return;
+
+  missionActive = true;
+  stops.forEach(function(b){ collecting[b.id] = true; delete alTimerSecs[b.id]; });
+  updateMetrics();
+
+  toast('\uD83D\uDE9B Mission: '+stops.length+' stops — calculating route...','e');
+
+  var depotLL = [DEPOT.lat, DEPOT.lng];
+
+  // Build OSRM URL: depot -> stop1 -> stop2 -> ... -> depot
+  var coords = [[DEPOT.lng,DEPOT.lat]]
+    .concat(stops.map(function(b){ return [b.lng,b.lat]; }))
+    .concat([[DEPOT.lng,DEPOT.lat]]);
+  var coordStr = coords.map(function(c){ return c[0]+','+c[1]; }).join(';');
+  var osrmURL  = 'https://router.project-osrm.org/route/v1/driving/'+coordStr+
+                 '?overview=full&geometries=polyline&steps=false';
+
+  // Place truck at depot
+  var mkr = L.marker(depotLL,{icon:iconTruck(false),zIndexOffset:2000}).addTo(map);
+
+  // Show placeholder dashed line
+  var allLL = [depotLL].concat(stops.map(function(b){ return [b.lat,b.lng]; })).concat([depotLL]);
+  var tempLine = L.polyline(allLL,{color:'#003178',weight:2,dashArray:'5 5',opacity:0.35}).addTo(map);
+  map.fitBounds(L.latLngBounds(allLL).pad(0.1),{animate:true,duration:0.6});
+
+  function cleanup() {
+    map.removeLayer(mkr);
+    map.removeLayer(routeLine);
+    missionActive = false;
+    stops.forEach(function(b){ delete collecting[b.id]; });
+    renderSidebar(); updateMetrics();
+    toast('\uD83C\uDFED Truck returned to '+DEPOT.name+' — mission complete!','s');
+    // Allow next mission after 15s
+    setTimeout(checkAutoDispatch, 15000);
+  }
+
+  var routeLine = tempLine;  // will be replaced once OSRM responds
+
+  function runFallback() {
+    // Straight-line animation fallback (no internet / OSRM down)
+    map.removeLayer(tempLine);
+    var allLL2 = [depotLL].concat(stops.map(function(b){ return [b.lat,b.lng]; })).concat([depotLL]);
+    routeLine = L.polyline(allLL2,{color:'#003178',weight:3,dashArray:'8 5',opacity:0.65}).addTo(map);
+
+    var si = 0;
+    var curPos = [DEPOT.lat,DEPOT.lng];
+
+    function moveToNext() {
+      var target, isReturn = false;
+      if(si < stops.length){ target = [stops[si].lat, stops[si].lng]; }
+      else { target = [DEPOT.lat,DEPOT.lng]; isReturn = true; }
+
+      mkr.setIcon(iconTruck(isReturn));
+      var STEPS = 30, step = 0;
+      var dLat = (target[0]-curPos[0])/STEPS;
+      var dLng = (target[1]-curPos[1])/STEPS;
+      var iv = setInterval(function(){
+        step++;
+        mkr.setLatLng([curPos[0]+dLat*step, curPos[1]+dLng*step]);
+        if(step < STEPS) return;
+        clearInterval(iv);
+        curPos = [target[0],target[1]];
+        if(isReturn){ cleanup(); return; }
+        // Collect
+        var b = stops[si];
+        mkr.setLatLng([b.lat,b.lng]);
+        mkr.setIcon(iconCollect());
+        toast('Collecting '+b.name+'...','i');
+        flashBin(b);
+        setTimeout(function(){
+          collectBin(b);
+          si++;
+          mkr.setIcon(iconTruck(false));
+          moveToNext();
+        },900);
+      },55);
+    }
+    moveToNext();
+  }
+
+  fetch(osrmURL)
+    .then(function(r){ return r.json(); })
+    .then(function(data){
+      if(!data.routes || !data.routes[0]) throw new Error('empty');
+      var route  = data.routes[0];
+      var allPts = decodePolyline(route.geometry);
+      var distKm = (route.distance/1000).toFixed(1);
+      var durMin = Math.round(route.duration/60);
+
+      // Replace placeholder with real road line
+      map.removeLayer(tempLine);
+      routeLine = L.polyline(allPts,{color:'#003178',weight:4,dashArray:'10 5',opacity:0.8}).addTo(map);
+      map.fitBounds(L.latLngBounds(allPts).pad(0.1),{animate:true,duration:0.7});
+      toast('\uD83D\uDDFA Route: '+distKm+' km, ~'+durMin+' min, '+stops.length+' stops','i');
+
+      // Find where each stop falls in the polyline (closest point index)
+      var stopIdx = stops.map(function(b){
+        var best=0, bestD=Infinity;
+        allPts.forEach(function(c,i){
+          var d=Math.abs(c[0]-b.lat)+Math.abs(c[1]-b.lng);
+          if(d<bestD){ bestD=d; best=i; }
+        });
+        return best;
+      });
+
+      // Build segments: [depot..stop1], [stop1..stop2], ..., [stopN..depot]
+      var segments = [];
+      var prev = 0;
+      stopIdx.forEach(function(idx){
+        if(idx > prev) segments.push(allPts.slice(prev, idx+1));
+        else segments.push([allPts[prev]]);
+        prev = idx;
+      });
+      segments.push(allPts.slice(prev)); // return leg
+
+      var segI = 0;
+      function nextSeg() {
+        if(segI >= segments.length){ cleanup(); return; }
+        var seg = segments[segI];
+        var isReturn = (segI === segments.length - 1);
+        var stopForThisSeg = isReturn ? null : stops[segI];
+        mkr.setIcon(iconTruck(isReturn));
+        var ms = Math.max(20, Math.round((isReturn?3000:4000)/Math.max(1,seg.length)));
+        animatePath(mkr, seg, ms, function(){
+          segI++;
+          if(isReturn){ nextSeg(); return; }
+          // Arrived at this stop
+          var b = stopForThisSeg;
+          mkr.setLatLng([b.lat,b.lng]);
+          mkr.setIcon(iconCollect());
+          toast('Collecting '+b.name+' ('+Math.round(b.fill)+'%)','i');
+          flashBin(b);
+          setTimeout(function(){
+            collectBin(b);
+            nextSeg();
+          },900);
+        });
+      }
+      nextSeg();
+    })
+    .catch(function(){ runFallback(); });
+}
+
+// ── AUTO-DISPATCH ─────────────────────────────────────────────
+function checkAutoDispatch() {
+  if(missionActive) return;
+  var crit = BINS.filter(function(b){ return b.fill>=90 && !collecting[b.id]; });
+  if(!crit.length) return;
+  toast('\uD83D\uDEA8 '+crit.length+' critical bin(s) — auto-dispatching truck!','e');
+  launchMission();
+}
+
+// ── FILL SIMULATION ───────────────────────────────────────────
+function initFillRates() {
+  BINS.forEach(function(b){
+    fillRates[b.id] = 1.0 + Math.random()*1.0;  // 1–2% per 4s tick
+  });
+}
+
+function simTick() {
+  var any = false;
+  BINS.forEach(function(b){
+    if(collecting[b.id]) return;
+    if(b.fill >= 100) return;
+    b.fill = Math.min(100, b.fill + fillRates[b.id]);
+    mlPredictions[b.id] = rulePredict(b.fill);
+    refreshMarker(b);
+    any = true;
+  });
+  if(any){ renderSidebar(); updateMetrics(); }
+  // Live-update open detail
+  if(selId){
+    var bd = BINS.find(function(x){ return x.id===selId; });
+    if(bd && !collecting[bd.id] && document.getElementById('detail').classList.contains('open')){
+      var c=fc(bd.fill),pct=Math.round(bd.fill);
+      document.getElementById('d-pct').textContent=pct+'%';
+      document.getElementById('d-pct').style.color=c;
+      document.getElementById('d-bar').style.width=pct+'%';
+      document.getElementById('d-bar').style.background=c;
+      document.getElementById('d-eta').textContent=eta(bd.fill);
+      document.getElementById('d-eta').style.color=c;
+      renderMLPanel(mlPredictions[bd.id],bd.fill);
+    }
+  }
+  checkAutoDispatch();
+}
+setInterval(simTick, 4000);
+
+// ── DETAIL PANEL ──────────────────────────────────────────────
+function openDetail(id) {
+  var b = BINS.find(function(x){ return x.id===id; });
+  if(!b) return;
+  selId = id;
+  document.querySelectorAll('.binrow').forEach(function(r){ r.classList.toggle('sel',r.dataset.id===id); });
+  map.panTo([b.lat,b.lng],{animate:true,duration:0.5});
+  var c=fc(b.fill), pct=Math.round(b.fill);
+  document.getElementById('d-name').textContent    = b.name;
+  document.getElementById('d-sensor').textContent  = 'Sensor SH-'+id.replace('B-','')+'  \u00B7  '+b.sector+' Sector';
+  document.getElementById('d-pct').textContent     = pct+'%';
+  document.getElementById('d-pct').style.color     = c;
+  document.getElementById('d-bar').style.width     = pct+'%';
+  document.getElementById('d-bar').style.background= c;
+  document.getElementById('d-eta').textContent     = eta(b.fill);
+  document.getElementById('d-eta').style.color     = c;
+  document.getElementById('d-type').textContent    = b.type;
+  document.getElementById('d-last').textContent    = 'Today, '+b.last;
+  document.getElementById('d-truck').textContent   = 'Truck #'+b.truck;
+  document.getElementById('d-sector').textContent  = b.sector;
+  document.getElementById('d-coords').textContent  = b.lat.toFixed(4)+'\u00B0N  '+b.lng.toFixed(4)+'\u00B0E';
+  renderMLPanel(mlPredictions[id]||rulePredict(b.fill), b.fill);
+  document.getElementById('d-spec-wrap').innerHTML =
+    API_ONLINE ? '<div class="spec-loading">Running STF model...</div>'
+               : '<div class="spec-loading">Start python app.py for STF predictions</div>';
+  if(API_ONLINE){
+    fetch(API_BASE+'/spectrogram/'+id)
+      .then(function(r){ return r.json(); })
+      .then(function(d){ document.getElementById('d-spec-wrap').innerHTML='<img class="spec-img" src="data:image/png;base64,'+d.spectrogram+'"/>'; })
+      .catch(function(){ document.getElementById('d-spec-wrap').innerHTML='<div class="spec-loading">Unavailable</div>'; });
+  }
+  var steps=[
+    {c:'#1b6d24',time:'Today, '+b.last,ev:'Last Collection',note:'Capacity reset to 0%'},
+    {c:c,time:'Now',ev:pct+'% full',note:b.fill>=80?'High fill rate':'Normal rate'},
+    {c:fc(95),time:'Predicted',ev:'Critical threshold',note:'Auto-dispatch will trigger at 90%'},
+  ];
+  document.getElementById('d-tl').innerHTML = steps.map(function(s){
+    return '<div class="tli"><div class="tldot" style="background:'+s.c+'"></div>'+
+      '<div><div class="tltime" style="color:'+s.c+'">'+s.time+'</div>'+
+      '<div class="tlev">'+s.ev+'</div><div class="tlnote">'+s.note+'</div></div></div>';
+  }).join('');
+  var db = document.getElementById('d-dispatch');
+  db.className = 'abtn pri'; db.disabled = false;
+  db.innerHTML = '<svg viewBox="0 0 24 24" fill="none" style="width:15px;height:15px"><path d="M1 3h15l3 6-3 6H1V3z" stroke="currentColor" stroke-width="2"/><circle cx="5" cy="18" r="2" stroke="currentColor" stroke-width="2"/><circle cx="14" cy="18" r="2" stroke="currentColor" stroke-width="2"/></svg> Dispatch Truck';
+  var ab = document.getElementById('d-ack');
+  if(acked[id]){
+    ab.className='abtn done';
+    ab.innerHTML='<svg viewBox="0 0 24 24" fill="none" style="width:15px;height:15px"><path d="M20 6L9 17l-5-5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg> Acknowledged';
+  } else {
+    ab.className='abtn sec';
+    ab.innerHTML='<svg viewBox="0 0 24 24" fill="none" style="width:15px;height:15px"><path d="M20 6L9 17l-5-5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg> Acknowledge';
+  }
+  document.getElementById('detail').classList.add('open');
+}
+function renderMLPanel(pred,fill) {
+  if(!pred) return;
+  var lc={Low:'#003178',Medium:'#1b6d24',High:'#d97706',Critical:'#720009'};
+  document.getElementById('d-ml-label').textContent = pred.label;
+  document.getElementById('d-ml-label').style.color = lc[pred.label]||'#003178';
+  document.getElementById('d-ml-conf').textContent  = 'Confidence: '+(pred.confidence*100).toFixed(1)+'% \u00B7 '+pred.method;
+  var p = pred.probabilities||{};
+  document.getElementById('d-prob-bars').innerHTML = ['Low','Medium','High','Critical'].map(function(cls){
+    var v=(p[cls]||0)*100;
+    return '<div class="prob-row"><span class="prob-name">'+cls+'</span>'+
+      '<div class="prob-track"><div class="prob-fill" style="width:'+v+'%;background:'+lc[cls]+'"></div></div>'+
+      '<span class="prob-val">'+v.toFixed(0)+'%</span></div>';
+  }).join('');
+}
+function closeDetail() {
+  document.getElementById('detail').classList.remove('open');
+  document.querySelectorAll('.binrow').forEach(function(r){ r.classList.remove('sel'); });
+  selId = null;
+}
+function doDispatch() {
+  if(!selId) return;
+  if(missionActive){ toast('Truck already on a mission','i'); return; }
+  launchMission();
+}
+function doEmergency() {
+  if(!selId) return;
+  toast('Emergency raised for '+BINS.find(function(x){ return x.id===selId; }).name,'e');
+}
+function doAddRoute() {}
+function doAck() {
+  if(!selId) return;
+  acked[selId]=true; toast('Acknowledged','s'); openDetail(selId);
+}
+
+// ── SIDEBAR ───────────────────────────────────────────────────
+function renderSidebar() {
+  updateMetrics();
+  document.getElementById('binlist').innerHTML =
+    BINS.slice().sort(function(a,b){ return b.fill-a.fill; }).map(function(b){
+      var pred = mlPredictions[b.id];
+      var meta = b.sector+(pred?' \u00B7 '+pred.label:'');
+      return '<div class="binrow" data-id="'+b.id+'" onclick="openDetail(\'' + b.id + '\')">' +
+        '<div class="bdot" style="background:'+fc(b.fill)+'"></div>' +
+        '<div class="binfo"><div class="bname">'+b.name+'</div><div class="bmeta">'+meta+'</div></div>' +
+        '<div class="bpct" style="background:'+fc(b.fill)+'15;color:'+fc(b.fill)+'">'+Math.round(b.fill)+'%</div>' +
+      '</div>';
+    }).join('');
+}
+function updateMetrics() {
+  var avg  = Math.round(BINS.reduce(function(s,b){ return s+b.fill; },0)/BINS.length);
+  var crit = BINS.filter(function(b){ return b.fill>=90 && !collecting[b.id]; }).length;
+  var ea = document.getElementById('m-avg');
+  if(ea) ea.childNodes[0].nodeValue = avg;
+  var ec = document.getElementById('m-crit');
+  if(ec) ec.textContent = crit;
+}
+
+// ── ALERTS PAGE ───────────────────────────────────────────────
+function renderAlerts() {
+  var crit = BINS.filter(function(b){ return b.fill>=90 && !collecting[b.id]; });
+  var warn = BINS.filter(function(b){ return b.fill>=70 && b.fill<90 && !collecting[b.id]; });
+  var all  = crit.concat(warn);
+  document.getElementById('al-count').textContent = all.length+' active alert'+(all.length!==1?'s':'');
+  if(!all.length){
+    document.getElementById('al-body').innerHTML='<div style="text-align:center;padding:40px;color:var(--txt2);font-size:13px;">No active alerts</div>';
+    return;
+  }
+  crit.forEach(function(b){ if(!alTimerSecs[b.id]) alTimerSecs[b.id]=b.fill>=96?1800:3600; });
+  document.getElementById('al-body').innerHTML = all.map(function(b){
+    var isCrit=b.fill>=90, pred=mlPredictions[b.id];
+    var badge=pred?('<span class="ml-alert-badge">ML: '+pred.label+' '+(pred.confidence*100).toFixed(0)+'%</span>'):'';
+    var timer=isCrit?pad(Math.floor((alTimerSecs[b.id]||0)/3600))+':'+pad(Math.floor(((alTimerSecs[b.id]||0)%3600)/60))+':'+pad((alTimerSecs[b.id]||0)%60):'\u2014';
+    return '<div class="acard '+(isCrit?'c':'w')+'">'+
+      '<div class="atop"><div>'+
+        '<span class="abadge '+(isCrit?'c':'w')+'">'+(isCrit?'Critical':'Warning')+'</span>'+badge+
+        '<div class="atitle">'+b.name+'</div>'+
+        '<div class="ameta">'+b.sector+' \u00B7 '+b.type+'</div>'+
+      '</div><div style="text-align:right">'+
+        '<div class="atimer" style="color:'+(isCrit?'var(--ter)':'#d97706')+'" id="at-'+b.id+'">'+timer+'</div>'+
+        '<div class="atl">countdown</div>'+
+      '</div></div>'+
+      '<div class="apbar"><div class="apfill" style="width:'+b.fill+'%;background:'+(isCrit?'var(--ter)':'#d97706')+'"></div></div>'+
+      '<div class="aacts">'+
+        '<button class="ab2 d" onclick="alDispatch()">'+
+          '<svg viewBox="0 0 24 24" fill="none" style="width:13px;height:13px"><path d="M1 3h15l3 6-3 6H1V3z" stroke="currentColor" stroke-width="2"/><circle cx="5" cy="18" r="2" stroke="currentColor" stroke-width="2"/><circle cx="14" cy="18" r="2" stroke="currentColor" stroke-width="2"/></svg>Dispatch Truck</button>'+
+        '<button class="ab2 '+(acked[b.id]?'ack':'g')+'" onclick="alAck(\'' + b.id + '\',this)">'+
+          '<svg viewBox="0 0 24 24" fill="none" style="width:13px;height:13px"><path d="M20 6L9 17l-5-5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>'+(acked[b.id]?'Acknowledged':'Acknowledge')+'</button>'+
+        '<button class="ab2 p" onclick="viewOnMap(\'' + b.id + '\')">'+
+          '<svg viewBox="0 0 24 24" fill="none" style="width:13px;height:13px"><circle cx="11" cy="11" r="8" stroke="currentColor" stroke-width="2"/><path d="M21 21l-4.35-4.35" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>View Map</button>'+
+      '</div></div>';
+  }).join('');
+  if(!alTimerHandle){
+    alTimerHandle = setInterval(function(){
+      Object.keys(alTimerSecs).forEach(function(id){
+        if(alTimerSecs[id]>0) alTimerSecs[id]--;
+        var el=document.getElementById('at-'+id);
+        if(el){ var s=alTimerSecs[id]; el.textContent=pad(Math.floor(s/3600))+':'+pad(Math.floor((s%3600)/60))+':'+pad(s%60); }
+      });
+    },1000);
+  }
+}
+function alDispatch(){
+  if(missionActive){ toast('Truck already on mission','i'); return; }
+  goPage('map',document.getElementById('t-map'));
+  setTimeout(launchMission,300);
+}
+function alAck(id,btn){
+  acked[id]=true;
+  btn.className='ab2 ack';
+  btn.innerHTML='<svg viewBox="0 0 24 24" fill="none" style="width:13px;height:13px"><path d="M20 6L9 17l-5-5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg> Acknowledged';
+  toast('Acknowledged','s');
+}
+function viewOnMap(id){ goPage('map',document.getElementById('t-map')); setTimeout(function(){ openDetail(id); },100); }
+
+// ── REPORTS ───────────────────────────────────────────────────
+function renderReports() {
+  document.getElementById('r-empty').textContent = Math.floor(BINS.length*0.6);
+  var days=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'], vals=[44,58,52,68,75,81,88];
+  document.getElementById('r-bars').innerHTML = vals.map(function(v,i){
+    var bg=i===6?'#1b6d24':i>=5?'#003178':'#dbf1fe';
+    return '<div class="bcol"><div class="bbar" style="height:'+v+'%;background:'+bg+'"></div><span class="bday">'+days[i]+'</span></div>';
+  }).join('');
+  var sum={Low:0,Medium:0,High:0,Critical:0}, cnt=0;
+  BINS.forEach(function(b){
+    var p=mlPredictions[b.id]; if(!p||!p.probabilities) return; cnt++;
+    ['Low','Medium','High','Critical'].forEach(function(c){ sum[c]+=(p.probabilities[c]||0); });
+  });
+  var cells=document.getElementById('r-conf-grid').querySelectorAll('.conf-val');
+  ['Low','Medium','High','Critical'].forEach(function(cls,i){
+    cells[i].textContent=(cnt?((sum[cls]/cnt)*100).toFixed(0):0)+'%';
+    cells[i].style.color=['#003178','#1b6d24','#d97706','#720009'][i];
+  });
+  document.getElementById('r-hs').innerHTML =
+    BINS.filter(function(b){ return b.fill>=70; }).sort(function(a,b){ return b.fill-a.fill; }).slice(0,5).map(function(b){
+      var lbl=(mlPredictions[b.id]||{label:rl(b.fill)}).label;
+      return '<tr><td>'+b.name+'</td><td><span class="rpill" style="background:'+fc(b.fill)+'15;color:'+fc(b.fill)+'">'+lbl+'</span></td><td style="font-family:DM Mono,monospace;font-size:11px;">'+eta(b.fill)+'</td></tr>';
+    }).join('');
+  document.getElementById('r-all').innerHTML =
+    BINS.slice().sort(function(a,b){ return b.fill-a.fill; }).map(function(b){
+      var pred=mlPredictions[b.id]||{label:rl(b.fill),confidence:0};
+      return '<tr>'+
+        '<td style="font-family:DM Mono,monospace;font-size:11px;">'+b.id+'</td>'+
+        '<td>'+b.name+'</td>'+
+        '<td><span class="rpill" style="background:'+fc(b.fill)+'15;color:'+fc(b.fill)+'">'+Math.round(b.fill)+'%</span></td>'+
+        '<td><span class="rpill" style="background:'+fc(b.fill)+'15;color:'+fc(b.fill)+'">'+pred.label+'</span></td>'+
+        '<td style="font-family:DM Mono,monospace;font-size:11px;">'+(pred.confidence?(pred.confidence*100).toFixed(0)+'%':'\u2014')+'</td>'+
+        '<td style="font-family:DM Mono,monospace;font-size:11px;">'+b.truck+'</td>'+
+        '<td><span class="rpill" style="background:'+fc(b.fill)+'15;color:'+fc(b.fill)+'">'+pred.label+'</span></td>'+
+      '</tr>';
+    }).join('');
+}
+
+// ── API CHECK ─────────────────────────────────────────────────
+function checkAPI() {
+  fetch(API_BASE+'/status').then(function(r){ return r.json(); }).then(function(d){
+    API_ONLINE=true;
+    document.getElementById('api-status-pill').className='api-status online';
+    document.getElementById('api-status-txt').textContent='API \u00B7 Online';
+    document.getElementById('ml-status-txt').textContent='STF \u00B7 '+d.bins+' bins';
+    document.getElementById('ml-acc-big').textContent=d.model_loaded?'~97%':'\u2014';
+    document.getElementById('m-acc').childNodes[0].nodeValue=d.model_loaded?'97':'\u2014';
+  }).catch(function(){
+    document.getElementById('api-status-pill').className='api-status offline';
+    document.getElementById('api-status-txt').textContent='API \u00B7 Offline';
+    document.getElementById('ml-status-txt').textContent='Run python app.py for STF';
+    document.getElementById('ml-acc-big').textContent='N/A';
+  });
+  BINS.forEach(function(b){ mlPredictions[b.id]=rulePredict(b.fill); });
+}
+
+// ── NAVIGATION ────────────────────────────────────────────────
+function goPage(name,btn) {
+  document.querySelectorAll('.tab').forEach(function(t){ t.classList.remove('on'); });
+  if(btn) btn.classList.add('on');
+  document.getElementById('p-alerts').classList.toggle('show',  name==='alerts');
+  document.getElementById('p-reports').classList.toggle('show', name==='reports');
+  if(name==='alerts')  renderAlerts();
+  if(name==='reports') renderReports();
+  if(name==='map') setTimeout(function(){ if(map) map.invalidateSize(); },60);
+}
+
+// ── TOAST ─────────────────────────────────────────────────────
+function toast(msg,type) {
+  var c=document.getElementById('toasts');
+  var t=document.createElement('div');
+  t.className='toast '+(type||'i'); t.textContent=msg; c.appendChild(t);
+  requestAnimationFrame(function(){ requestAnimationFrame(function(){ t.classList.add('show'); }); });
+  setTimeout(function(){ t.classList.remove('show'); setTimeout(function(){ if(t.parentNode) t.parentNode.removeChild(t); },260); },3500);
+}
+
+// ── BOOT ──────────────────────────────────────────────────────
+var _kf=document.createElement('style');
+_kf.textContent='@keyframes spin{to{transform:rotate(360deg)}} @keyframes mring{0%{box-shadow:0 0 0 0 rgba(114,0,9,.7)}70%{box-shadow:0 0 0 12px rgba(114,0,9,0)}100%{box-shadow:0 0 0 0 rgba(114,0,9,0)}}';
+document.head.appendChild(_kf);
+
+setInterval(function(){ document.getElementById('clk').textContent=new Date().toLocaleTimeString('en-IN',{hour12:false}); },1000);
+
+initMap();
+initFillRates();
+BINS.forEach(function(b){ mlPredictions[b.id]=rulePredict(b.fill); });
+renderSidebar();
+checkAPI();
+setTimeout(function(){ toast('Sentinel Hub online \u00B7 Chennai Waste Network','s'); },400);
+setTimeout(function(){ checkAutoDispatch(); },1500);
+</script>
+</body>
+</html>
